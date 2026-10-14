@@ -12,6 +12,7 @@ public class Orden {
     private final String referencia; // número de mesa o id de pedido externo
     private final List<LineaPedido> lineas = new ArrayList<>();
     private EstadoOrden estado = EstadoOrden.ABIERTA;
+    private Pago pago; // se llena al cerrar la orden (RF5)
 
     private Orden(String id, TipoOrden tipo, String referencia) {
         this.id = id;
@@ -48,8 +49,17 @@ public class Orden {
         throw new UnsupportedOperationException("TODO RF4: subtotal, descuentos, impuestos y propina");
     }
 
-    public void cerrar() {
-        throw new UnsupportedOperationException("TODO RF5: cerrar la orden tras registrar el pago");
+    /** RF5: cerrar la orden una vez registrado el pago que la cubre. */
+    public void cerrar(Pago pago) {
+        exigirAbierta();
+        if (pago == null) {
+            throw new ReglaDeNegocioException("Para cerrar la orden se necesita el pago registrado");
+        }
+        if (!id.equals(pago.ordenId())) {
+            throw new ReglaDeNegocioException("El pago no corresponde a esta orden");
+        }
+        this.pago = pago;
+        this.estado = EstadoOrden.CERRADA;
     }
 
     private void exigirAbierta() {
@@ -62,5 +72,6 @@ public class Orden {
     public TipoOrden getTipo() { return tipo; }
     public String getReferencia() { return referencia; }
     public EstadoOrden getEstado() { return estado; }
+    public Pago getPago() { return pago; }
     public List<LineaPedido> getLineas() { return Collections.unmodifiableList(lineas); }
 }

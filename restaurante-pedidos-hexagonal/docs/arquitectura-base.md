@@ -17,10 +17,10 @@
 1. La interfaz ya existe en `application/port/in`.
 2. Crea la clase `XxxService` en `application/service` que la implemente y reciba los puertos de salida por constructor.
 3. Pon las reglas de negocio dentro del dominio (`Orden`, etc.), no en el servicio.
-4. Conéctalo en `Main` (o en el adaptador de entrada que se use).
+4. Conéctalo en `Main` (raíz de composición) y, si hace falta, agrega la opción en `MenuConsola`.
 
 ## Pendiente (TODO en el código)
-- `Orden.cancelarLinea` (RF3), `Orden.calcularTotales` (RF4), `Orden.cerrar` (RF5)
-- Servicios para `AgregarLinea`, `CancelarLinea`, `CalcularTotales`, `CerrarOrden`, `AdministrarMenu`
-- Adaptadores de entrada adicionales (API web) y de persistencia real
+- `Orden.cancelarLinea` (RF3) y `Orden.calcularTotales` (RF4)
+- Servicios para `AgregarLinea`, `CancelarLinea`, `CalcularTotales`
+- Adaptadores de entrada adicionales (API web: el código Spring/Swagger quedó guardado en `_pendiente-rest-spring/`, fuera de `src`) y de persistencia real
 - Pruebas del núcleo

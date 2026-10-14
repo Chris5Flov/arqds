@@ -15,6 +15,7 @@ public class PagoPasarelaDigitalAdapter implements PuertoCobro {
 
     @Override
     public Pago cobrar(String ordenId, BigDecimal monto) {
-        return new Pago(MetodoPago.PASARELA_DIGITAL, monto, UUID.randomUUID().toString());
+        return new Pago(UUID.randomUUID().toString(), ordenId, MetodoPago.PASARELA_DIGITAL, monto,
+                UUID.randomUUID().toString());
     }
 }

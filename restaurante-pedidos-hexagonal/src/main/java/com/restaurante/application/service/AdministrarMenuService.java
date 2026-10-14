@@ -60,4 +60,13 @@ public class AdministrarMenuService implements AdministrarMenuUseCase {
         }
     }
 
-    // La tasa se maneja como
+    // La tasa se maneja como fracción (0.16 = 16 %), no como porcentaje
+    private void validarImpuesto(BigDecimal tasa) {
+        if (tasa == null) {
+            throw new ReglaDeNegocioException("La tasa de impuesto es obligatoria");
+        }
+        if (tasa.signum() < 0 || tasa.compareTo(BigDecimal.ONE) > 0) {
+            throw new ReglaDeNegocioException("La tasa de impuesto debe estar entre 0 y 1 (por ejemplo 0.16)");
+        }
+    }
+}

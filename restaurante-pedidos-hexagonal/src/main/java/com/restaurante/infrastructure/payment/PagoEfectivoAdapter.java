@@ -15,6 +15,7 @@ public class PagoEfectivoAdapter implements PuertoCobro {
 
     @Override
     public Pago cobrar(String ordenId, BigDecimal monto) {
-        return new Pago(MetodoPago.EFECTIVO, monto, UUID.randomUUID().toString());
+        return new Pago(UUID.randomUUID().toString(), ordenId, MetodoPago.EFECTIVO, monto,
+                UUID.randomUUID().toString());
     }
 }
