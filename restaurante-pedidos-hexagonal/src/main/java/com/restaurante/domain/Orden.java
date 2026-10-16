@@ -42,8 +42,16 @@ public class Orden {
     }
 
     public void cancelarLinea(String lineaId) {
-        throw new UnsupportedOperationException("TODO RF3: cancelar línea solo si esEditable()");
+    exigirAbierta();
+    LineaPedido linea = lineas.stream()
+            .filter(l -> l.getId().equals(lineaId))
+            .findFirst()
+            .orElseThrow(() -> new ReglaDeNegocioException("No existe la línea " + lineaId));
+    if (!linea.esEditable()) {
+        throw new ReglaDeNegocioException("La línea ya no es editable porque está en cocina");
     }
+    lineas.remove(linea);
+}
 
     public Totales calcularTotales() {
         throw new UnsupportedOperationException("TODO RF4: subtotal, descuentos, impuestos y propina");
