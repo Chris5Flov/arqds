@@ -1,23 +1,26 @@
 package com.restaurante.infrastructure.in.cli;
 
+import java.util.List;
+import java.util.Scanner;
+
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
 import com.restaurante.application.port.in.AgregarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
+import com.restaurante.application.port.in.GestionarCocinaUseCase;
 import com.restaurante.application.port.out.PuertoCobro;
 import com.restaurante.application.port.out.RepositorioMenu;
 import com.restaurante.application.port.out.RepositorioOrdenes;
-import com.restaurante.application.service.AgregarLineaService;
 import com.restaurante.application.service.AbrirOrdenService;
 import com.restaurante.application.service.AdministrarMenuService;
+import com.restaurante.application.service.AgregarLineaService;
 import com.restaurante.application.service.CerrarOrdenService;
+import com.restaurante.application.service.GestionarCocinaService;
 import com.restaurante.infrastructure.payment.PagoEfectivoAdapter;
 import com.restaurante.infrastructure.payment.PagoPasarelaDigitalAdapter;
 import com.restaurante.infrastructure.payment.PagoTarjetaAdapter;
 import com.restaurante.infrastructure.persistence.RepositorioMenuEnMemoria;
 import com.restaurante.infrastructure.persistence.RepositorioOrdenesEnMemoria;
-import java.util.List;
-import java.util.Scanner;
 
 /**
  * Punto de entrada y raíz de composición: aquí se "conecta" todo.
@@ -37,11 +40,12 @@ public class Main {
         AdministrarMenuUseCase administrarMenu = new AdministrarMenuService(repositorioMenu);
         AbrirOrdenUseCase abrirOrden = new AbrirOrdenService(repositorioOrdenes);
         AgregarLineaUseCase agregarLinea = new AgregarLineaService(repositorioOrdenes, repositorioMenu);
+        GestionarCocinaUseCase gestionarCocina = new GestionarCocinaService(repositorioOrdenes);
         CerrarOrdenUseCase cerrarOrden = new CerrarOrdenService(repositorioOrdenes, puertosCobro);
 
         // 3. Adaptador de entrada (menú interactivo por teclado)
         try (Scanner scanner = new Scanner(System.in)) {
-            new MenuConsola(administrarMenu, abrirOrden, agregarLinea, cerrarOrden, scanner, System.out).iniciar();
+            new MenuConsola(administrarMenu, abrirOrden, agregarLinea, gestionarCocina, cerrarOrden, scanner, System.out).iniciar();
         }
     }
 }

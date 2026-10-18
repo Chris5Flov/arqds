@@ -1,9 +1,17 @@
 package com.restaurante.infrastructure.in.cli;
 
+import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
+
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
 import com.restaurante.application.port.in.AgregarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
+import com.restaurante.application.port.in.GestionarCocinaUseCase;
 import com.restaurante.domain.LineaPedido;
 import com.restaurante.domain.MetodoPago;
 import com.restaurante.domain.Orden;
@@ -11,12 +19,6 @@ import com.restaurante.domain.Pago;
 import com.restaurante.domain.Plato;
 import com.restaurante.domain.ReglaDeNegocioException;
 import com.restaurante.domain.TipoOrden;
-import java.io.PrintStream;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
 
 /**
  * Adaptador de entrada (consola interactiva).
@@ -29,6 +31,7 @@ public class MenuConsola {
     private final AdministrarMenuUseCase administrarMenu;
     private final AbrirOrdenUseCase abrirOrden;
     private final AgregarLineaUseCase agregarLinea;
+    private final GestionarCocinaUseCase gestionarCocina;
     private final CerrarOrdenUseCase cerrarOrden;
     private final Scanner entrada;
     private final PrintStream salida;
@@ -39,12 +42,14 @@ public class MenuConsola {
     public MenuConsola(AdministrarMenuUseCase administrarMenu,
                        AbrirOrdenUseCase abrirOrden,
                        AgregarLineaUseCase agregarLinea,
+                       GestionarCocinaUseCase gestionarCocina,
                        CerrarOrdenUseCase cerrarOrden,
                        Scanner entrada,
                        PrintStream salida) {
         this.administrarMenu = administrarMenu;
         this.abrirOrden = abrirOrden;
         this.agregarLinea = agregarLinea;
+        this.gestionarCocina = gestionarCocina;
         this.cerrarOrden = cerrarOrden;
         this.entrada = entrada;
         this.salida = salida;
@@ -75,7 +80,8 @@ public class MenuConsola {
         salida.println("3. Abrir una nueva orden");
         salida.println("4. Agregar una línea a una orden");
         salida.println("5. Cerrar una orden (procesar pago)");
-        salida.println("6. Salir");
+        salida.println("6. Cocina: ver líneas pendientes");
+        salida.println("7. Salir");
         salida.println("------------------------------------");
     }
 
@@ -88,10 +94,11 @@ public class MenuConsola {
                 case "3" -> abrirNuevaOrden();
                 case "4" -> agregarLineaAOrden();
                 case "5" -> cerrarOrdenConPago();
-                case "6" -> {
+                case "6" -> gestionarCocina();
+                case "7" -> {
                     return false;
                 }
-                default -> salida.println("Opción no válida. Escribe un número del 1 al 6.");
+                default -> salida.println("Opción no válida. Escribe un número del 1 al 7.");
             }
         } catch (ReglaDeNegocioException e) {
             salida.println("No se pudo completar la operación: " + e.getMessage());
@@ -241,6 +248,56 @@ public class MenuConsola {
                 + " (" + pago.metodo() + ")");
     }
 
+    // ---------------------------------------------------------------- 6. Cocina
+    private void gestionarCocina() {
+        while (true) {
+            List<GestionarCocinaUseCase.LineaEnCocina> pendientes = gestionarCocina.listarPendientes();
+            salida.println();
+            salida.println("-- Líneas pendientes en cocina --");
+            if (pendientes.isEmpty()) {
+                salida.println("No hay líneas pendientes.");
+                return;
+            }
+            salida.printf("%-3s %-16s %-22s %-5s %s%n", "#", "ORDEN", "PLATO", "CANT", "ESTADO");
+            for (int i = 0; i < pendientes.size(); i++) {
+                GestionarCocinaUseCase.LineaEnCocina l = pendientes.get(i);
+                salida.printf("%-3d %-16s %-22s %-5d %s%n",
+                        i + 1, l.referenciaOrden(), l.plato(), l.cantidad(), l.estado());
+            }
+            salida.println();
+            salida.println("1. Iniciar cocción");
+            salida.println("2. Marcar como lista");
+            salida.println("3. Volver al menú principal");
+            String opcion = leerLinea("Elige una opción: ");
+            if (opcion.equals("3")) {
+                return;
+            }
+            if (!opcion.equals("1") && !opcion.equals("2")) {
+                salida.println("Opción no válida. Escribe 1, 2 o 3.");
+                continue;
+            }
+            Integer numero = leerEntero("Número de la línea: ");
+            if (numero == null) {
+                continue;
+            }
+            if (numero < 1 || numero > pendientes.size()) {
+                salida.println("Número de línea no válido.");
+                continue;
+            }
+            GestionarCocinaUseCase.LineaEnCocina elegida = pendientes.get(numero - 1);
+            try {
+                if (opcion.equals("1")) {
+                    gestionarCocina.iniciarCoccion(elegida.ordenId(), elegida.lineaId());
+                    salida.println("Cocción iniciada: " + elegida.plato() + " (" + elegida.referenciaOrden() + ").");
+                } else {
+                    gestionarCocina.marcarLista(elegida.ordenId(), elegida.lineaId());
+                    salida.println("Línea lista: " + elegida.plato() + " (" + elegida.referenciaOrden() + ").");
+                }
+            } catch (ReglaDeNegocioException e) {
+                salida.println("No se pudo completar la operación: " + e.getMessage());
+            }
+        }
+    }
     /** Permite escoger una orden abierta en esta sesión por número, o pegar un id completo. */
     private String elegirOrden() {
         if (ordenesDeLaSesion.isEmpty()) {
@@ -266,6 +323,7 @@ public class MenuConsola {
         }
         return texto;
     }
+
 
     // ---------------------------------------------------------------- utilidades de lectura
     private String leerLinea(String mensaje) {
@@ -295,7 +353,7 @@ public class MenuConsola {
             return null;
         }
     }
-    
+
     /** Igual que leerDecimal, pero Enter vacío significa 0. */
     private BigDecimal leerDecimalOpcional(String mensaje) {
         String texto = leerLinea(mensaje).replace(',', '.');

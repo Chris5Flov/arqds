@@ -51,7 +51,19 @@ public class Orden {
         throw new ReglaDeNegocioException("La línea ya no es editable porque está en cocina");
     }
     lineas.remove(linea);
-}
+    }
+
+    /** RF3: la cocina empieza a preparar una línea (PENDIENTE -> EN_COCCION). */
+    public void iniciarCoccionLinea(String lineaId) {
+        exigirAbierta();
+        buscarLinea(lineaId).iniciarCoccion();
+    }
+
+    /** RF3: la cocina termina una línea (EN_COCCION -> LISTO). */
+    public void marcarLineaLista(String lineaId) {
+        exigirAbierta();
+        buscarLinea(lineaId).marcarLista();
+    }
 
     public Totales calcularTotales() {
         throw new UnsupportedOperationException("TODO RF4: subtotal, descuentos, impuestos y propina");
@@ -70,6 +82,14 @@ public class Orden {
         this.estado = EstadoOrden.CERRADA;
     }
 
+    private LineaPedido buscarLinea(String lineaId) {
+    return lineas.stream()
+            .filter(l -> l.getId().equals(lineaId))
+            .findFirst()
+            .orElseThrow(() -> new ReglaDeNegocioException("No existe la línea " + lineaId));
+    
+    }
+    
     private void exigirAbierta() {
         if (estado != EstadoOrden.ABIERTA) {
             throw new ReglaDeNegocioException("La orden no está abierta");
