@@ -10,6 +10,7 @@ import java.util.Scanner;
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
 import com.restaurante.application.port.in.AgregarLineaUseCase;
+import com.restaurante.application.port.in.CancelarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
 import com.restaurante.application.port.in.GestionarCocinaUseCase;
 import com.restaurante.domain.LineaPedido;
@@ -31,6 +32,7 @@ public class MenuConsola {
     private final AdministrarMenuUseCase administrarMenu;
     private final AbrirOrdenUseCase abrirOrden;
     private final AgregarLineaUseCase agregarLinea;
+    private final CancelarLineaUseCase cancelarLinea;
     private final GestionarCocinaUseCase gestionarCocina;
     private final CerrarOrdenUseCase cerrarOrden;
     private final Scanner entrada;
@@ -42,6 +44,7 @@ public class MenuConsola {
     public MenuConsola(AdministrarMenuUseCase administrarMenu,
                        AbrirOrdenUseCase abrirOrden,
                        AgregarLineaUseCase agregarLinea,
+                       CancelarLineaUseCase cancelarLinea,
                        GestionarCocinaUseCase gestionarCocina,
                        CerrarOrdenUseCase cerrarOrden,
                        Scanner entrada,
@@ -49,6 +52,7 @@ public class MenuConsola {
         this.administrarMenu = administrarMenu;
         this.abrirOrden = abrirOrden;
         this.agregarLinea = agregarLinea;
+        this.cancelarLinea = cancelarLinea;
         this.gestionarCocina = gestionarCocina;
         this.cerrarOrden = cerrarOrden;
         this.entrada = entrada;
@@ -79,9 +83,10 @@ public class MenuConsola {
         salida.println("2. Consultar el menú disponible");
         salida.println("3. Abrir una nueva orden");
         salida.println("4. Agregar una línea a una orden");
-        salida.println("5. Cerrar una orden (procesar pago)");
-        salida.println("6. Cocina: ver líneas pendientes");
-        salida.println("7. Salir");
+        salida.println("5. Cancelar una línea de una orden");
+        salida.println("6. Cerrar una orden (procesar pago)");
+        salida.println("7. Cocina: ver líneas pendientes");
+        salida.println("8. Salir");
         salida.println("------------------------------------");
     }
 
@@ -93,12 +98,13 @@ public class MenuConsola {
                 case "2" -> consultarMenu();
                 case "3" -> abrirNuevaOrden();
                 case "4" -> agregarLineaAOrden();
-                case "5" -> cerrarOrdenConPago();
-                case "6" -> gestionarCocina();
-                case "7" -> {
+                case "5" -> cancelarLineaDeOrden();
+                case "6" -> cerrarOrdenConPago();
+                case "7" -> gestionarCocina();
+                case "8" -> {
                     return false;
                 }
-                default -> salida.println("Opción no válida. Escribe un número del 1 al 7.");
+                default -> salida.println("Opción no válida. Escribe un número del 1 al 8.");
             }
         } catch (ReglaDeNegocioException e) {
             salida.println("No se pudo completar la operación: " + e.getMessage());
@@ -214,7 +220,40 @@ public class MenuConsola {
         }
     }
 
-    // ---------------------------------------------------------------- 5. Cerrar orden
+    // ---------------------------------------------------------------- 5. Cancelar línea
+    private void cancelarLineaDeOrden() {
+        salida.println();
+        salida.println("-- Cancelar una línea de una orden --");
+        String ordenId = elegirOrden();
+        if (ordenId == null) {
+            return;
+        }
+        // Se reutiliza la vista de cocina: muestra las líneas de la orden que aún no están LISTO.
+        List<GestionarCocinaUseCase.LineaEnCocina> lineas = gestionarCocina.listarPendientes().stream()
+                .filter(l -> l.ordenId().equals(ordenId))
+                .toList();
+        if (lineas.isEmpty()) {
+            salida.println("La orden no tiene líneas por cancelar (no tiene líneas o ya están listas).");
+            return;
+        }
+        salida.println("Líneas de la orden:");
+        for (int i = 0; i < lineas.size(); i++) {
+            GestionarCocinaUseCase.LineaEnCocina l = lineas.get(i);
+            salida.println("  " + (i + 1) + ". " + l.plato() + " x" + l.cantidad() + " [" + l.estado() + "]");
+        }
+        Integer numero = leerEntero("Número de la línea a cancelar: ");
+        if (numero == null) {
+            return;
+        }
+        if (numero < 1 || numero > lineas.size()) {
+            salida.println("Número de línea no válido.");
+            return;
+        }
+        GestionarCocinaUseCase.LineaEnCocina elegida = lineas.get(numero - 1);
+        cancelarLinea.cancelar(ordenId, elegida.lineaId());
+        salida.println("Línea cancelada: " + elegida.plato() + " x" + elegida.cantidad() + ".");
+    }
+    // ---------------------------------------------------------------- 6. Cerrar orden
     private void cerrarOrdenConPago() {
         salida.println();
         salida.println("-- Cerrar orden --");
@@ -248,7 +287,7 @@ public class MenuConsola {
                 + " (" + pago.metodo() + ")");
     }
 
-    // ---------------------------------------------------------------- 6. Cocina
+    // ---------------------------------------------------------------- 7. Cocina
     private void gestionarCocina() {
         while (true) {
             List<GestionarCocinaUseCase.LineaEnCocina> pendientes = gestionarCocina.listarPendientes();
