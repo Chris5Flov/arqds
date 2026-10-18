@@ -2,7 +2,9 @@ package com.restaurante.infrastructure.in.cli;
 
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
+import com.restaurante.application.port.in.AgregarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
+import com.restaurante.domain.LineaPedido;
 import com.restaurante.domain.MetodoPago;
 import com.restaurante.domain.Orden;
 import com.restaurante.domain.Pago;
@@ -26,6 +28,7 @@ public class MenuConsola {
 
     private final AdministrarMenuUseCase administrarMenu;
     private final AbrirOrdenUseCase abrirOrden;
+    private final AgregarLineaUseCase agregarLinea;
     private final CerrarOrdenUseCase cerrarOrden;
     private final Scanner entrada;
     private final PrintStream salida;
@@ -35,11 +38,13 @@ public class MenuConsola {
 
     public MenuConsola(AdministrarMenuUseCase administrarMenu,
                        AbrirOrdenUseCase abrirOrden,
+                       AgregarLineaUseCase agregarLinea,
                        CerrarOrdenUseCase cerrarOrden,
                        Scanner entrada,
                        PrintStream salida) {
         this.administrarMenu = administrarMenu;
         this.abrirOrden = abrirOrden;
+        this.agregarLinea = agregarLinea;
         this.cerrarOrden = cerrarOrden;
         this.entrada = entrada;
         this.salida = salida;
@@ -68,8 +73,9 @@ public class MenuConsola {
         salida.println("1. Registrar un plato en el menú");
         salida.println("2. Consultar el menú disponible");
         salida.println("3. Abrir una nueva orden");
-        salida.println("4. Cerrar una orden (procesar pago)");
-        salida.println("5. Salir");
+        salida.println("4. Agregar una línea a una orden");
+        salida.println("5. Cerrar una orden (procesar pago)");
+        salida.println("6. Salir");
         salida.println("------------------------------------");
     }
 
@@ -80,11 +86,12 @@ public class MenuConsola {
                 case "1" -> registrarPlato();
                 case "2" -> consultarMenu();
                 case "3" -> abrirNuevaOrden();
-                case "4" -> cerrarOrdenConPago();
-                case "5" -> {
+                case "4" -> agregarLineaAOrden();
+                case "5" -> cerrarOrdenConPago();
+                case "6" -> {
                     return false;
                 }
-                default -> salida.println("Opción no válida. Escribe un número del 1 al 5.");
+                default -> salida.println("Opción no válida. Escribe un número del 1 al 6.");
             }
         } catch (ReglaDeNegocioException e) {
             salida.println("No se pudo completar la operación: " + e.getMessage());
@@ -157,7 +164,50 @@ public class MenuConsola {
         salida.println("  Estado:     " + orden.getEstado());
     }
 
-    // ---------------------------------------------------------------- 4. Cerrar orden
+        // ---------------------------------------------------------------- 4. Agregar línea
+    private void agregarLineaAOrden() {
+        salida.println();
+        salida.println("-- Agregar línea a una orden --");
+        List<Plato> platos = administrarMenu.listar();
+        if (platos.isEmpty()) {
+            salida.println("El menú está vacío. Usa la opción 1 para registrar platos primero.");
+            return;
+        }
+        String ordenId = elegirOrden();
+        if (ordenId == null) {
+            return;
+        }
+
+        salida.println("Platos disponibles:");
+        for (int i = 0; i < platos.size(); i++) {
+            Plato p = platos.get(i);
+            salida.println("  " + (i + 1) + ". " + p.nombre() + " (" + p.precioBase().toPlainString() + ")");
+        }
+        Integer numeroPlato = leerEntero("Número del plato: ");
+        if (numeroPlato == null) {
+            return;
+        }
+        if (numeroPlato < 1 || numeroPlato > platos.size()) {
+            salida.println("Número de plato no válido.");
+            return;
+        }
+        Integer cantidad = leerEntero("Cantidad: ");
+        if (cantidad == null) {
+            return;
+        }
+
+        // Los modificadores aún no se pueden administrar (RF1): la línea se crea sin ellos.
+        Orden orden = agregarLinea.agregar(new AgregarLineaUseCase.Comando(
+                ordenId, platos.get(numeroPlato - 1).id(), cantidad, List.of()));
+
+        salida.println("Línea agregada. Líneas de la orden " + orden.getReferencia() + ":");
+        for (LineaPedido l : orden.getLineas()) {
+            salida.println("  - " + l.getPlato().nombre() + " x" + l.getCantidad()
+                    + " [" + l.getEstadoCocina() + "]");
+        }
+    }
+
+    // ---------------------------------------------------------------- 5. Cerrar orden
     private void cerrarOrdenConPago() {
         salida.println();
         salida.println("-- Cerrar orden --");
@@ -235,6 +285,17 @@ public class MenuConsola {
         }
     }
 
+    /** @return el entero leído, o null si el formato es inválido (ya se avisó al usuario). */
+    private Integer leerEntero(String mensaje) {
+        String texto = leerLinea(mensaje);
+        try {
+            return Integer.valueOf(texto);
+        } catch (NumberFormatException e) {
+            salida.println("Número entero no válido: \"" + texto + "\".");
+            return null;
+        }
+    }
+    
     /** Igual que leerDecimal, pero Enter vacío significa 0. */
     private BigDecimal leerDecimalOpcional(String mensaje) {
         String texto = leerLinea(mensaje).replace(',', '.');

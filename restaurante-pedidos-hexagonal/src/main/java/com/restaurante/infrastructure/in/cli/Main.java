@@ -2,10 +2,12 @@ package com.restaurante.infrastructure.in.cli;
 
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
+import com.restaurante.application.port.in.AgregarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
 import com.restaurante.application.port.out.PuertoCobro;
 import com.restaurante.application.port.out.RepositorioMenu;
 import com.restaurante.application.port.out.RepositorioOrdenes;
+import com.restaurante.application.service.AgregarLineaService;
 import com.restaurante.application.service.AbrirOrdenService;
 import com.restaurante.application.service.AdministrarMenuService;
 import com.restaurante.application.service.CerrarOrdenService;
@@ -34,11 +36,12 @@ public class Main {
         // 2. Casos de uso (reciben los puertos de salida)
         AdministrarMenuUseCase administrarMenu = new AdministrarMenuService(repositorioMenu);
         AbrirOrdenUseCase abrirOrden = new AbrirOrdenService(repositorioOrdenes);
+        AgregarLineaUseCase agregarLinea = new AgregarLineaService(repositorioOrdenes, repositorioMenu);
         CerrarOrdenUseCase cerrarOrden = new CerrarOrdenService(repositorioOrdenes, puertosCobro);
 
         // 3. Adaptador de entrada (menú interactivo por teclado)
         try (Scanner scanner = new Scanner(System.in)) {
-            new MenuConsola(administrarMenu, abrirOrden, cerrarOrden, scanner, System.out).iniciar();
+            new MenuConsola(administrarMenu, abrirOrden, agregarLinea, cerrarOrden, scanner, System.out).iniciar();
         }
     }
 }
