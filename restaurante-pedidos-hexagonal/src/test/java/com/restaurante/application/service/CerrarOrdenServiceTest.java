@@ -9,6 +9,7 @@ import com.restaurante.domain.EstadoOrden;
 import com.restaurante.domain.MetodoPago;
 import com.restaurante.domain.Orden;
 import com.restaurante.domain.Pago;
+import com.restaurante.domain.Plato;
 import com.restaurante.domain.ReglaDeNegocioException;
 import com.restaurante.domain.TipoOrden;
 import com.restaurante.infrastructure.payment.PagoEfectivoAdapter;
@@ -18,7 +19,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class CerrarOrdenServiceTest {
@@ -109,13 +109,18 @@ class CerrarOrdenServiceTest {
                 () -> real.cerrar(orden.getId(), MetodoPago.PASARELA_DIGITAL, BigDecimal.ZERO));
     }
 
-    @Disabled("Depende de Orden.calcularTotales() (RF4), que aún lanza UnsupportedOperationException")
     @Test
     void cobraConElPuertoQueSoportaElMetodoYCierraLaOrden() {
+        // 85 x 2 al 16 % + 20 x 1 sin impuesto = 190.00 + 27.20 de impuestos = 217.20
+        orden.agregarLinea(new Plato("P1", "Tacos", new BigDecimal("85"), new BigDecimal("0.16")), 2, List.of());
+        orden.agregarLinea(new Plato("P2", "Agua", new BigDecimal("20"), BigDecimal.ZERO), 1, List.of());
+
         Pago pago = servicio.cerrar(orden.getId(), MetodoPago.TARJETA, new BigDecimal("10"));
 
+        // total + propina
+        assertEquals(new BigDecimal("227.20"), pago.monto());
         assertEquals(MetodoPago.TARJETA, pago.metodo());
-        assertEquals(1, tarjeta.cobros.size());
+        assertEquals(List.of(new BigDecimal("227.20")), tarjeta.cobros);
         assertTrue(efectivo.cobros.isEmpty());
         assertEquals(EstadoOrden.CERRADA, repositorio.buscarPorId(orden.getId()).get().getEstado());
     }

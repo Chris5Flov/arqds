@@ -10,6 +10,7 @@ import java.util.Scanner;
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
 import com.restaurante.application.port.in.AgregarLineaUseCase;
+import com.restaurante.application.port.in.CalcularTotalesUseCase;
 import com.restaurante.application.port.in.CancelarLineaUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
 import com.restaurante.application.port.in.GestionarCocinaUseCase;
@@ -20,6 +21,7 @@ import com.restaurante.domain.Pago;
 import com.restaurante.domain.Plato;
 import com.restaurante.domain.ReglaDeNegocioException;
 import com.restaurante.domain.TipoOrden;
+import com.restaurante.domain.Totales;
 
 /**
  * Adaptador de entrada (consola interactiva).
@@ -34,6 +36,7 @@ public class MenuConsola {
     private final AgregarLineaUseCase agregarLinea;
     private final CancelarLineaUseCase cancelarLinea;
     private final GestionarCocinaUseCase gestionarCocina;
+    private final CalcularTotalesUseCase calcularTotales;
     private final CerrarOrdenUseCase cerrarOrden;
     private final Scanner entrada;
     private final PrintStream salida;
@@ -46,6 +49,7 @@ public class MenuConsola {
                        AgregarLineaUseCase agregarLinea,
                        CancelarLineaUseCase cancelarLinea,
                        GestionarCocinaUseCase gestionarCocina,
+                       CalcularTotalesUseCase calcularTotales,
                        CerrarOrdenUseCase cerrarOrden,
                        Scanner entrada,
                        PrintStream salida) {
@@ -54,6 +58,7 @@ public class MenuConsola {
         this.agregarLinea = agregarLinea;
         this.cancelarLinea = cancelarLinea;
         this.gestionarCocina = gestionarCocina;
+        this.calcularTotales = calcularTotales;
         this.cerrarOrden = cerrarOrden;
         this.entrada = entrada;
         this.salida = salida;
@@ -86,7 +91,8 @@ public class MenuConsola {
         salida.println("5. Cancelar una línea de una orden");
         salida.println("6. Cerrar una orden (procesar pago)");
         salida.println("7. Cocina: ver líneas pendientes");
-        salida.println("8. Salir");
+        salida.println("8. Consultar totales de una orden");
+        salida.println("9. Salir");
         salida.println("------------------------------------");
     }
 
@@ -101,10 +107,11 @@ public class MenuConsola {
                 case "5" -> cancelarLineaDeOrden();
                 case "6" -> cerrarOrdenConPago();
                 case "7" -> gestionarCocina();
-                case "8" -> {
+                case "8" -> consultarTotales();
+                case "9" -> {
                     return false;
                 }
-                default -> salida.println("Opción no válida. Escribe un número del 1 al 8.");
+                default -> salida.println("Opción no válida. Escribe un número del 1 al 9.");
             }
         } catch (ReglaDeNegocioException e) {
             salida.println("No se pudo completar la operación: " + e.getMessage());
@@ -337,6 +344,32 @@ public class MenuConsola {
             }
         }
     }
+
+    // ---------------------------------------------------------------- 8. Totales
+    private void consultarTotales() {
+        salida.println();
+        salida.println("-- Totales de una orden --");
+        String ordenId = elegirOrden();
+        if (ordenId == null) {
+            return;
+        }
+        BigDecimal descuento = leerDecimalOpcional("Descuento en monto (Enter para 0): ");
+        if (descuento == null) {
+            return;
+        }
+        BigDecimal propina = leerDecimalOpcional("Propina (Enter para 0): ");
+        if (propina == null) {
+            return;
+        }
+
+        Totales t = calcularTotales.calcular(ordenId, descuento, propina);
+        salida.printf("  %-10s %12s%n", "Subtotal:", t.subtotal().toPlainString());
+        salida.printf("  %-10s %12s%n", "Descuento:", t.descuento().negate().toPlainString());
+        salida.printf("  %-10s %12s%n", "Impuestos:", t.impuestos().toPlainString());
+        salida.printf("  %-10s %12s%n", "Propina:", t.propina().toPlainString());
+        salida.printf("  %-10s %12s%n", "Total:", t.total().toPlainString());
+    }
+
     /** Permite escoger una orden abierta en esta sesión por número, o pegar un id completo. */
     private String elegirOrden() {
         if (ordenesDeLaSesion.isEmpty()) {
