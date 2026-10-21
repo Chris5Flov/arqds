@@ -1,6 +1,6 @@
 package com.restaurante.infrastructure.persistence;
 
-import com.restaurante.application.port.out.RepositorioMenu;
+import com.restaurante.application.port.out.PlatoRepository;
 import com.restaurante.domain.Plato;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RepositorioMenuEnMemoria implements RepositorioMenu {
+public class PlatoRepositoryMemoria implements PlatoRepository {
     private final Map<String, Plato> datos = new ConcurrentHashMap<>();
 
     @Override

@@ -1,0 +1,103 @@
+@startuml
+title Diagrama de clases del dominio
+skinparam classAttributeIconSize 0
+hide empty members
+
+package domain {
+  class Orden {
+    -id : String
+    -tipo : TipoOrden
+    -referencia : String
+    -fechaCreacion : LocalDateTime
+    -estado : EstadoOrden
+    -totales : Totales
+    +{static} abrir(tipo, referencia) : Orden
+    +agregarLinea(plato, cantidad, modificadores) : LineaPedido
+    +modificarLinea(lineaId, cantidad, modificadores) : void
+    +cancelarLinea(lineaId) : void
+    +iniciarCoccionLinea(lineaId) : void
+    +marcarLineaLista(lineaId) : void
+    +calcularTotales(descuento, propina) : Totales
+    +totalesParaCobrar(descuento, propina) : Totales
+    +registrarPago(pago) : void
+    +cerrar(descuento, propina) : void
+    +cancelar() : void
+  }
+
+  class LineaPedido {
+    -id : String
+    -cantidad : int
+    -precioUnitario : BigDecimal
+    -tasaImpuestoAplicada : BigDecimal
+    -estadoCocina : EstadoCocina
+    +esEditable() : boolean
+    +modificar(cantidad, modificadores) : void
+    +cancelar() : void
+    +iniciarCoccion() : void
+    +marcarLista() : void
+  }
+
+  class Plato <<record>> {
+    id : String
+    nombre : String
+    precioBase : BigDecimal
+    tasaImpuesto : BigDecimal
+  }
+
+  class Modificador <<record>> {
+    id : String
+    nombre : String
+    tipo : TipoModificador
+    costoExtra : BigDecimal
+  }
+
+  class ModificadorAplicado <<record>> {
+    costoExtraAplicado : BigDecimal
+  }
+
+  class Pago <<record>> {
+    id : String
+    ordenId : String
+    fecha : LocalDateTime
+    estado : EstadoPago
+    metodo : MetodoPago
+    monto : BigDecimal
+    referencia : String
+    +esAprobado() : boolean
+  }
+
+  class Totales <<record>> {
+    subtotal : BigDecimal
+    descuento : BigDecimal
+    impuestos : BigDecimal
+    propina : BigDecimal
+    total : BigDecimal
+  }
+
+  class ReglaDeNegocioException
+
+  enum TipoOrden { SALA\nPARA_LLEVAR\nDELIVERY }
+  enum EstadoOrden { ABIERTA\nCERRADA\nCANCELADA }
+  enum EstadoCocina { PENDIENTE\nEN_COCCION\nLISTO\nCANCELADA }
+  enum EstadoPago { PENDIENTE\nAPROBADO\nRECHAZADO }
+  enum MetodoPago { EFECTIVO\nTARJETA\nPASARELA_DIGITAL }
+  enum TipoModificador { EXTRA\nEXCLUSION }
+
+  Orden "1" *-- "0..*" LineaPedido
+  Orden "1" o-- "0..*" Pago
+  Orden --> "0..1" Totales
+  Orden --> TipoOrden
+  Orden --> EstadoOrden
+  Orden ..> ReglaDeNegocioException
+  LineaPedido "0..*" --> "1" Plato
+  LineaPedido "1" *-- "0..*" ModificadorAplicado
+  LineaPedido --> EstadoCocina
+  ModificadorAplicado "0..*" --> "1" Modificador
+  Modificador --> TipoModificador
+  Pago --> EstadoPago
+  Pago --> MetodoPago
+
+  note top of Orden : Máximo un pago aprobado por orden.\nSe cierra únicamente con un pago\naprobado que cubra el total.
+  note right of LineaPedido : Solo se modifica o cancela\ncon la orden abierta y la línea PENDIENTE.\nLas canceladas no cuentan en los totales.
+}
+@enduml

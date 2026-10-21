@@ -4,7 +4,7 @@ import com.restaurante.domain.Plato;
 import java.util.List;
 import java.util.Optional;
 
-public interface RepositorioMenu {
+public interface PlatoRepository {
     void guardar(Plato plato);
 
     Optional<Plato> buscarPorId(String id);

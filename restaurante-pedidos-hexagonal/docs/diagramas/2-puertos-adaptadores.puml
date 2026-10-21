@@ -1,0 +1,109 @@
+@startuml
+title Diagrama de clases de puertos y adaptadores
+left to right direction
+skinparam classAttributeIconSize 0
+hide empty members
+
+package infrastructure.in.cli {
+  class Main {
+    +{static} main(args : String[]) : void
+  }
+  class MenuConsola
+}
+
+package application.port.in {
+  interface AdministrarMenuUseCase {
+    +registrarPlato(plato) : Plato
+    +listarPlatos() : List<Plato>
+    +registrarModificador(modificador) : Modificador
+    +listarModificadores() : List<Modificador>
+  }
+  interface GestionarOrdenUseCase {
+    +abrir(tipo, referencia) : Orden
+    +agregarLinea(ordenId, platoId, cantidad, modificadorIds) : Orden
+    +modificarLinea(ordenId, lineaId, cantidad, modificadorIds) : Orden
+    +cancelarLinea(ordenId, lineaId) : Orden
+    +cancelarOrden(ordenId) : Orden
+    +consultar(ordenId) : Orden
+    +listar() : List<Orden>
+    +listarAbiertas() : List<Orden>
+  }
+  interface GestionarCocinaUseCase {
+    +listarPendientes() : List<LineaEnCocina>
+    +iniciarCoccion(ordenId, lineaId) : void
+    +marcarLista(ordenId, lineaId) : void
+  }
+  interface CobrarOrdenUseCase {
+    +calcularTotales(ordenId, descuento, propina) : Totales
+    +cobrar(ordenId, metodo, descuento, propina) : Pago
+  }
+}
+
+package application.service {
+  class AdministrarMenuService
+  class GestionarOrdenService
+  class GestionarCocinaService
+  class CobrarOrdenService
+}
+
+package application.port.out {
+  interface PlatoRepository {
+    +guardar(plato) : void
+    +buscarPorId(id) : Optional<Plato>
+    +listar() : List<Plato>
+  }
+  interface ModificadorRepository {
+    +guardar(modificador) : void
+    +buscarPorId(id) : Optional<Modificador>
+    +listar() : List<Modificador>
+  }
+  interface OrdenRepository {
+    +guardar(orden) : void
+    +buscarPorId(id) : Optional<Orden>
+    +listar() : List<Orden>
+  }
+  interface ProcesadorPago {
+    +soporta(metodo) : boolean
+    +cobrar(ordenId, monto) : Pago
+  }
+}
+
+package infrastructure.persistence {
+  class PlatoRepositoryMemoria
+  class ModificadorRepositoryMemoria
+  class OrdenRepositoryMemoria
+}
+
+package infrastructure.payment {
+  class PagoEfectivoAdapter
+  class PagoTarjetaSimuladoAdapter
+  class PagoPasarelaSimuladoAdapter
+}
+
+Main ..> MenuConsola : crea
+MenuConsola --> AdministrarMenuUseCase
+MenuConsola --> GestionarOrdenUseCase
+MenuConsola --> GestionarCocinaUseCase
+MenuConsola --> CobrarOrdenUseCase
+
+AdministrarMenuUseCase <|.. AdministrarMenuService
+GestionarOrdenUseCase <|.. GestionarOrdenService
+GestionarCocinaUseCase <|.. GestionarCocinaService
+CobrarOrdenUseCase <|.. CobrarOrdenService
+
+AdministrarMenuService --> PlatoRepository
+AdministrarMenuService --> ModificadorRepository
+GestionarOrdenService --> OrdenRepository
+GestionarOrdenService --> PlatoRepository
+GestionarOrdenService --> ModificadorRepository
+GestionarCocinaService --> OrdenRepository
+CobrarOrdenService --> OrdenRepository
+CobrarOrdenService --> "1..*" ProcesadorPago
+
+PlatoRepository <|.. PlatoRepositoryMemoria
+ModificadorRepository <|.. ModificadorRepositoryMemoria
+OrdenRepository <|.. OrdenRepositoryMemoria
+ProcesadorPago <|.. PagoEfectivoAdapter
+ProcesadorPago <|.. PagoTarjetaSimuladoAdapter
+ProcesadorPago <|.. PagoPasarelaSimuladoAdapter
+@enduml

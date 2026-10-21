@@ -7,13 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.restaurante.application.port.in.GestionarCocinaUseCase.LineaEnCocina;
 import com.restaurante.domain.EstadoCocina;
 import com.restaurante.domain.LineaPedido;
-import com.restaurante.domain.MetodoPago;
+import com.restaurante.domain.Modificador;
 import com.restaurante.domain.Orden;
-import com.restaurante.domain.Pago;
+import com.restaurante.domain.PagosDePrueba;
 import com.restaurante.domain.Plato;
 import com.restaurante.domain.ReglaDeNegocioException;
+import com.restaurante.domain.TipoModificador;
 import com.restaurante.domain.TipoOrden;
-import com.restaurante.infrastructure.persistence.RepositorioOrdenesEnMemoria;
+import com.restaurante.infrastructure.persistence.OrdenRepositoryMemoria;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,18 +22,20 @@ import org.junit.jupiter.api.Test;
 
 class GestionarCocinaServiceTest {
 
-    private RepositorioOrdenesEnMemoria ordenes;
+    private OrdenRepositoryMemoria ordenes;
     private GestionarCocinaService servicio;
     private Orden orden;
     private LineaPedido linea;
 
     @BeforeEach
     void setUp() {
-        ordenes = new RepositorioOrdenesEnMemoria();
+        ordenes = new OrdenRepositoryMemoria();
         servicio = new GestionarCocinaService(ordenes);
 
         orden = Orden.abrir(TipoOrden.SALA, "Mesa 5");
-        linea = orden.agregarLinea(new Plato("P1", "Tacos", new BigDecimal("85"), new BigDecimal("0.16")), 2, List.of());
+        Modificador sinCebolla = new Modificador("M2", "Sin cebolla", TipoModificador.EXCLUSION, BigDecimal.ZERO);
+        linea = orden.agregarLinea(new Plato("P1", "Tacos", new BigDecimal("85"), new BigDecimal("0.16")), 2,
+                List.of(sinCebolla));
         ordenes.guardar(orden);
     }
 
@@ -41,7 +44,7 @@ class GestionarCocinaServiceTest {
         List<LineaEnCocina> pendientes = servicio.listarPendientes();
 
         assertEquals(List.of(new LineaEnCocina(orden.getId(), linea.getId(), "Mesa 5", "Tacos", 2,
-                EstadoCocina.PENDIENTE)), pendientes);
+                List.of("Sin cebolla"), EstadoCocina.PENDIENTE)), pendientes);
     }
 
     @Test
@@ -55,10 +58,25 @@ class GestionarCocinaServiceTest {
     }
 
     @Test
-    void noListaLineasDeOrdenesCerradas() {
-        orden.cerrar(new Pago("PG1", orden.getId(), MetodoPago.EFECTIVO, BigDecimal.TEN, "ref"));
+    void noListaLineasCanceladas() {
+        orden.cancelarLinea(linea.getId());
 
         assertTrue(servicio.listarPendientes().isEmpty());
+    }
+
+    @Test
+    void noListaLineasDeOrdenesCerradas() {
+        PagosDePrueba.cerrar(orden);
+
+        assertTrue(servicio.listarPendientes().isEmpty());
+    }
+
+    @Test
+    void rechazaIniciarLaCoccionDeUnaLineaCancelada() {
+        orden.cancelarLinea(linea.getId());
+
+        assertThrows(ReglaDeNegocioException.class, () -> servicio.iniciarCoccion(orden.getId(), linea.getId()));
+        assertEquals(EstadoCocina.CANCELADA, linea.getEstadoCocina());
     }
 
     @Test
