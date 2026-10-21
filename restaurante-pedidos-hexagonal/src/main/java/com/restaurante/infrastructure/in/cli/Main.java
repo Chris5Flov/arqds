@@ -6,6 +6,7 @@ import java.util.Scanner;
 import com.restaurante.application.port.in.AbrirOrdenUseCase;
 import com.restaurante.application.port.in.AdministrarMenuUseCase;
 import com.restaurante.application.port.in.AgregarLineaUseCase;
+import com.restaurante.application.port.in.CalcularTotalesUseCase;
 import com.restaurante.application.port.in.CerrarOrdenUseCase;
 import com.restaurante.application.port.in.CancelarLineaUseCase;
 import com.restaurante.application.port.in.GestionarCocinaUseCase;
@@ -15,6 +16,7 @@ import com.restaurante.application.port.out.RepositorioOrdenes;
 import com.restaurante.application.service.AbrirOrdenService;
 import com.restaurante.application.service.AdministrarMenuService;
 import com.restaurante.application.service.AgregarLineaService;
+import com.restaurante.application.service.CalcularTotalesService;
 import com.restaurante.application.service.CerrarOrdenService;
 import com.restaurante.application.service.CancelarLineaService;
 import com.restaurante.application.service.GestionarCocinaService;
@@ -44,11 +46,13 @@ public class Main {
         AgregarLineaUseCase agregarLinea = new AgregarLineaService(repositorioOrdenes, repositorioMenu);
         CancelarLineaUseCase cancelarLinea = new CancelarLineaService(repositorioOrdenes);
         GestionarCocinaUseCase gestionarCocina = new GestionarCocinaService(repositorioOrdenes);
+        CalcularTotalesUseCase calcularTotales = new CalcularTotalesService(repositorioOrdenes);
         CerrarOrdenUseCase cerrarOrden = new CerrarOrdenService(repositorioOrdenes, puertosCobro);
 
         // 3. Adaptador de entrada (menú interactivo por teclado)
         try (Scanner scanner = new Scanner(System.in)) {
-            new MenuConsola(administrarMenu, abrirOrden, agregarLinea, cancelarLinea, gestionarCocina, cerrarOrden, scanner, System.out).iniciar();
+            new MenuConsola(administrarMenu, abrirOrden, agregarLinea, cancelarLinea, gestionarCocina,
+                    calcularTotales, cerrarOrden, scanner, System.out).iniciar();
         }
     }
 }
