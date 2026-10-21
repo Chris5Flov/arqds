@@ -8,7 +8,7 @@
 | `application.port.in` | Puertos de entrada: un caso de uso por actor | `domain` |
 | `application.port.out` | Puertos de salida: repositorios y procesador de pago | `domain` |
 | `application.service` | Implementaciones de los casos de uso | `domain`, `application.port` |
-| `infrastructure` | Adaptadores: entrada por consola, persistencia en memoria, pagos | `application`, `domain` |
+| `infrastructure` | Adaptadores: entrada web (REST) y por consola, persistencia en memoria, pagos; `config` arma la aplicación | `application`, `domain` |
 
 **Regla de dependencias:** todo apunta hacia el dominio. El dominio no importa nada de
 `application` ni de `infrastructure`, y `application` no importa nada de `infrastructure`.
@@ -29,14 +29,28 @@
 | `OrdenRepository` | `OrdenRepositoryMemoria` |
 | `ProcesadorPago` | `PagoEfectivoAdapter`, `PagoTarjetaSimuladoAdapter`, `PagoPasarelaSimuladoAdapter` |
 
-Adaptador de entrada: `infrastructure.in.cli.MenuConsola`, con las opciones agrupadas por actor.
-`Main` es la raíz de composición: crea los adaptadores de salida y se los pasa a los servicios por constructor.
+### Adaptadores de entrada
 
-> **Alcance:** el diagrama hexagonal muestra además controladores REST (`MenuRestController`,
-> `OrdenRestController`, `CocinaRestController`, `CajaRestController`) y repositorios con base de datos
-> (`*RepositoryBD`). En esta entrega los adaptadores son la consola y los repositorios en memoria.
-> Para agregar REST o base de datos basta con escribir nuevos adaptadores que usen los mismos puertos,
-> sin tocar `domain` ni `application`.
+| Adaptador | Clases | Usa |
+|---|---|---|
+| Web (REST + interfaz) | `infrastructure.in.web`: `MenuRestController`, `OrdenRestController`, `CocinaRestController`, `CajaRestController`, servidos por `ServidorWeb` | los 4 puertos de entrada |
+| Consola | `infrastructure.in.cli.MenuConsola` (opciones agrupadas por actor) | los 4 puertos de entrada |
+
+- `infrastructure.config.Aplicacion` es la raíz de composición: crea los adaptadores de salida y se los
+  pasa a los servicios por constructor. La usan `MainWeb` (servidor web) y `Main` (consola).
+- `infrastructure.config.DatosDemo` carga un menú y una orden de ejemplo con `--demo`.
+- El adaptador web usa el servidor HTTP del JDK (`com.sun.net.httpserver`) y Gson para el JSON.
+  Su estructura:
+  - `web.http`: `Enrutador`, `Peticion`, `Respuesta`, `ApiHandler` (traduce `ReglaDeNegocioException`
+    a 400), `Json` y `Conversion`.
+  - `web.dto`: los DTO del contrato y `MapeadorDto`.
+  - `ArchivosEstaticosHandler`: sirve `src/main/resources/web/` en `/`.
+- Contrato completo de la API: [interfaz/contrato-api.md](interfaz/contrato-api.md).
+
+> **Alcance:** el diagrama hexagonal muestra además repositorios con base de datos (`*RepositoryBD`).
+> En esta entrega la persistencia es en memoria. Para agregar una base de datos basta con escribir
+> nuevos adaptadores para los mismos puertos de salida y conectarlos en `Aplicacion`, sin tocar
+> `domain` ni `application`.
 
 ## Reglas de negocio principales (ver `diagramas/2-clases-dominio.jpeg`)
 
@@ -60,8 +74,9 @@ Adaptador de entrada: `infrastructure.in.cli.MenuConsola`, con las opciones agru
 1. Declara la operación en el puerto de entrada que corresponda en `application/port/in`.
 2. Impleméntala en su `XxxService` de `application/service`, que recibe los puertos de salida por constructor.
 3. Pon las reglas de negocio dentro del dominio (`Orden`, `LineaPedido`, etc.), no en el servicio.
-4. Agrega la opción en `MenuConsola` y, si es un servicio nuevo, conéctalo en `Main`.
+4. Expónla en el controlador REST que corresponda (actualizando `docs/interfaz/contrato-api.md`) y/o en
+   `MenuConsola`. Si es un servicio nuevo, conéctalo en `Aplicacion`.
 
 ## Fuera de alcance / mejoras posibles
-- Adaptadores REST y persistencia en base de datos (ver la nota de alcance).
+- Persistencia en base de datos (ver la nota de alcance).
 - Integración con una terminal bancaria o pasarela de pago reales (hoy son simulaciones).
