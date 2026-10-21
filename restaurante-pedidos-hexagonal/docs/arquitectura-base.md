@@ -20,7 +20,7 @@
 4. Conéctalo en `Main` (raíz de composición) y, si hace falta, agrega la opción en `MenuConsola`.
 
 ## Pendiente (TODO en el código)
-- `Orden.cancelarLinea` (RF3) y `Orden.calcularTotales` (RF4)
-- Servicios para `AgregarLinea`, `CancelarLinea`, `CalcularTotales`
+- `Orden.cancelarLinea` (RF3)
+- Servicios para `AgregarLinea`, `CancelarLinea`
 - Adaptadores de entrada adicionales (API web: el código Spring/Swagger quedó guardado en `_pendiente-rest-spring/`, fuera de `src`) y de persistencia real
 - Pruebas del núcleo

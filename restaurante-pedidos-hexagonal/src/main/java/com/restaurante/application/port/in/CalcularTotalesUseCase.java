@@ -5,5 +5,5 @@ import java.math.BigDecimal;
 
 /** RF4 */
 public interface CalcularTotalesUseCase {
-    Totales calcular(String ordenId, BigDecimal propina);
+    Totales calcular(String ordenId, BigDecimal descuento, BigDecimal propina);
 }
