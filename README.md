@@ -3,8 +3,8 @@ ProyectosADS
 
 ## Sistema de Pedidos de Restaurante (`restaurante-pedidos-hexagonal/`)
 
-Aplicación de consola en Java 17 con arquitectura hexagonal (puertos y adaptadores) para gestionar las
-comandas de un restaurante:
+Aplicación en Java 17 con arquitectura hexagonal (puertos y adaptadores) para gestionar las
+comandas de un restaurante. Se usa desde una interfaz web (con una API REST) o desde la consola:
 
 | Actor | Funcionalidad |
 |---|---|
@@ -20,13 +20,17 @@ comandas de un restaurante:
 ### Compilar, probar y ejecutar
 ```bash
 cd restaurante-pedidos-hexagonal
-mvn test                  # ejecuta las pruebas JUnit 5
-mvn compile exec:java     # abre el menú interactivo
-# o bien
+mvn test                                       # ejecuta las pruebas JUnit 5
+mvn compile exec:java                          # servidor web en http://localhost:8080
+mvn compile exec:java -Dexec.args="--demo"     # ... con un menú y una orden de ejemplo
+mvn compile exec:java -Dexec.mainClass=com.restaurante.infrastructure.in.cli.Main   # menú de consola
+# o bien, un jar ejecutable con sus dependencias:
 mvn package
-java -jar target/pedidos-hexagonal-0.1.0.jar
+java -jar target/pedidos-hexagonal-0.1.0.jar --demo --puerto=8080
 ```
+Desde el IDE: ejecuta `MainWeb` (web) o `Main` (consola). Ambos aceptan el argumento `--demo`.
 
 ### Documentación
 - [Arquitectura y reglas de negocio](restaurante-pedidos-hexagonal/docs/arquitectura-base.md)
+- [Contrato de la API REST](restaurante-pedidos-hexagonal/docs/interfaz/contrato-api.md)
 - [Diagramas](restaurante-pedidos-hexagonal/docs/diagramas/)

@@ -14,9 +14,19 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.2</junit.version>
+    <gson.version>2.10.1</gson.version>
+    <!-- Clase que arranca "mvn compile exec:java". Para la consola:
+         mvn compile exec:java -Dexec.mainClass=com.restaurante.infrastructure.in.cli.Main -->
+    <exec.mainClass>com.restaurante.infrastructure.in.web.MainWeb</exec.mainClass>
   </properties>
 
   <dependencies>
+    <!-- JSON para el adaptador web (REST) -->
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -33,27 +43,33 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
       </plugin>
-      <!-- Permite correr el jar generado con "java -jar" -->
+      <!-- "mvn package" genera un jar ejecutable con sus dependencias: java -jar target/pedidos-hexagonal-0.1.0.jar -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.4.1</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>com.restaurante.infrastructure.in.cli.Main</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>${exec.mainClass}</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
-      <!-- Permite ejecutar el menú interactivo con "mvn compile exec:java" -->
+      <!-- Permite ejecutar la aplicación con "mvn compile exec:java" (por defecto, el servidor web) -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.2.0</version>
-        <configuration>
-          <mainClass>com.restaurante.infrastructure.in.cli.Main</mainClass>
-        </configuration>
       </plugin>
     </plugins>
   </build>

@@ -4,6 +4,19 @@ left to right direction
 skinparam classAttributeIconSize 0
 hide empty members
 
+package infrastructure.config {
+  class Aplicacion <<raíz de composición>>
+}
+
+package infrastructure.in.web {
+  class MainWeb
+  class ServidorWeb
+  class MenuRestController
+  class OrdenRestController
+  class CocinaRestController
+  class CajaRestController
+}
+
 package infrastructure.in.cli {
   class Main {
     +{static} main(args : String[]) : void
@@ -79,6 +92,18 @@ package infrastructure.payment {
   class PagoTarjetaSimuladoAdapter
   class PagoPasarelaSimuladoAdapter
 }
+
+Main ..> Aplicacion : usa
+MainWeb ..> Aplicacion : usa
+MainWeb ..> ServidorWeb : crea
+ServidorWeb *-- MenuRestController
+ServidorWeb *-- OrdenRestController
+ServidorWeb *-- CocinaRestController
+ServidorWeb *-- CajaRestController
+MenuRestController --> AdministrarMenuUseCase
+OrdenRestController --> GestionarOrdenUseCase
+CocinaRestController --> GestionarCocinaUseCase
+CajaRestController --> CobrarOrdenUseCase
 
 Main ..> MenuConsola : crea
 MenuConsola --> AdministrarMenuUseCase
