@@ -4,18 +4,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.restaurante.application.port.in.GestionarCocinaUseCase;
-import com.restaurante.application.port.out.RepositorioOrdenes;
+import com.restaurante.application.port.out.OrdenRepository;
 import com.restaurante.domain.EstadoCocina;
 import com.restaurante.domain.EstadoOrden;
 import com.restaurante.domain.LineaPedido;
+import com.restaurante.domain.ModificadorAplicado;
 import com.restaurante.domain.Orden;
 import com.restaurante.domain.ReglaDeNegocioException;
 
 public class GestionarCocinaService implements GestionarCocinaUseCase {
 
-    private final RepositorioOrdenes ordenes;
+    private final OrdenRepository ordenes;
 
-    public GestionarCocinaService(RepositorioOrdenes ordenes) {
+    public GestionarCocinaService(OrdenRepository ordenes) {
         this.ordenes = ordenes;
     }
 
@@ -26,7 +27,7 @@ public class GestionarCocinaService implements GestionarCocinaUseCase {
             if (orden.getEstado() != EstadoOrden.ABIERTA) {
                 continue;
             }
-            for (LineaPedido linea : orden.getLineas()) {
+            for (LineaPedido linea : orden.getLineasActivas()) {
                 if (linea.getEstadoCocina() != EstadoCocina.LISTO) {
                     resultado.add(new LineaEnCocina(
                             orden.getId(),
@@ -34,6 +35,7 @@ public class GestionarCocinaService implements GestionarCocinaUseCase {
                             orden.getReferencia(),
                             linea.getPlato().nombre(),
                             linea.getCantidad(),
+                            linea.getModificadores().stream().map(ModificadorAplicado::nombre).toList(),
                             linea.getEstadoCocina()));
                 }
             }

@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.restaurante.application.port.out.RepositorioOrdenes;
+import com.restaurante.application.port.out.OrdenRepository;
 import com.restaurante.domain.Orden;
 
-public class RepositorioOrdenesEnMemoria implements RepositorioOrdenes {
+public class OrdenRepositoryMemoria implements OrdenRepository {
     private final Map<String, Orden> datos = Collections.synchronizedMap(new LinkedHashMap<>());
 
     @Override
