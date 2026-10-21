@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sistema de Pedidos</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script type="module" src="js/app.js"></script>
+</head>
+<body>
+    <header class="encabezado">
+        <div class="encabezado__marca">
+            <h1 class="encabezado__titulo">Sistema de Pedidos</h1>
+            <span id="etiqueta-simulador" class="etiqueta-simulador" hidden>MODO SIMULADOR</span>
+        </div>
+        <nav class="navegacion" aria-label="Secciones">
+            <a class="pestana" href="#/ordenes" data-ruta="ordenes">
+                <span class="pestana__nombre">Órdenes</span>
+                <span class="pestana__actor">Mesero</span>
+            </a>
+            <a class="pestana" href="#/cocina" data-ruta="cocina">
+                <span class="pestana__nombre">Cocina</span>
+                <span class="pestana__actor">Cocinero</span>
+            </a>
+            <a class="pestana" href="#/caja" data-ruta="caja">
+                <span class="pestana__nombre">Caja</span>
+                <span class="pestana__actor">Cajero</span>
+            </a>
+            <a class="pestana" href="#/menu" data-ruta="menu">
+                <span class="pestana__nombre">Menú</span>
+                <span class="pestana__actor">Administrador</span>
+            </a>
+        </nav>
+    </header>
+
+    <main id="contenido" class="contenido" tabindex="-1"></main>
+
+    <div id="notificaciones" class="notificaciones" aria-live="polite"></div>
+    <div id="modal-raiz"></div>
+</body>
+</html>
