@@ -13,7 +13,11 @@ public final class SolicitudesDto {
 
     public record RegistrarPlatoRequest(String id, String nombre, String precioBase, String tasaImpuesto) { }
 
+    public record ActualizarPlatoRequest(String nombre, String precioBase, String tasaImpuesto) { }
+
     public record RegistrarModificadorRequest(String id, String nombre, String tipo, String costoExtra) { }
+
+    public record ActualizarModificadorRequest(String nombre, String tipo, String costoExtra) { }
 
     public record AbrirOrdenRequest(String tipo, String referencia) { }
 

@@ -24,13 +24,7 @@ public class AdministrarMenuService implements AdministrarMenuUseCase {
 
     @Override
     public Plato registrarPlato(Plato plato) {
-        if (plato == null) {
-            throw new ReglaDeNegocioException("El plato es obligatorio");
-        }
-        validarTexto(plato.id(), "El id del plato es obligatorio");
-        validarTexto(plato.nombre(), "El nombre del plato es obligatorio");
-        validarPrecio(plato.precioBase());
-        validarImpuesto(plato.tasaImpuesto());
+        validarPlato(plato);
 
         if (platos.buscarPorId(plato.id()).isPresent()) {
             throw new ReglaDeNegocioException("Ya existe un plato con id " + plato.id());
@@ -48,16 +42,23 @@ public class AdministrarMenuService implements AdministrarMenuUseCase {
     }
 
     @Override
+    public Plato actualizarPlato(Plato plato) {
+        validarPlato(plato);
+        exigirPlato(plato.id());
+
+        platos.guardar(plato);
+        return plato;
+    }
+
+    @Override
+    public void eliminarPlato(String platoId) {
+        exigirPlato(platoId);
+        platos.eliminar(platoId);
+    }
+
+    @Override
     public Modificador registrarModificador(Modificador modificador) {
-        if (modificador == null) {
-            throw new ReglaDeNegocioException("El modificador es obligatorio");
-        }
-        validarTexto(modificador.id(), "El id del modificador es obligatorio");
-        validarTexto(modificador.nombre(), "El nombre del modificador es obligatorio");
-        if (modificador.tipo() == null) {
-            throw new ReglaDeNegocioException("El tipo del modificador es obligatorio (EXTRA o EXCLUSION)");
-        }
-        validarCostoExtra(modificador.tipo(), modificador.costoExtra());
+        validarModificador(modificador);
 
         if (modificadores.buscarPorId(modificador.id()).isPresent()) {
             throw new ReglaDeNegocioException("Ya existe un modificador con id " + modificador.id());
@@ -72,6 +73,55 @@ public class AdministrarMenuService implements AdministrarMenuUseCase {
         return modificadores.listar().stream()
                 .sorted(Comparator.comparing(Modificador::nombre))
                 .toList();
+    }
+
+    @Override
+    public Modificador actualizarModificador(Modificador modificador) {
+        validarModificador(modificador);
+        exigirModificador(modificador.id());
+
+        modificadores.guardar(modificador);
+        return modificador;
+    }
+
+    @Override
+    public void eliminarModificador(String modificadorId) {
+        exigirModificador(modificadorId);
+        modificadores.eliminar(modificadorId);
+    }
+
+    private void validarPlato(Plato plato) {
+        if (plato == null) {
+            throw new ReglaDeNegocioException("El plato es obligatorio");
+        }
+        validarTexto(plato.id(), "El id del plato es obligatorio");
+        validarTexto(plato.nombre(), "El nombre del plato es obligatorio");
+        validarPrecio(plato.precioBase());
+        validarImpuesto(plato.tasaImpuesto());
+    }
+
+    private void validarModificador(Modificador modificador) {
+        if (modificador == null) {
+            throw new ReglaDeNegocioException("El modificador es obligatorio");
+        }
+        validarTexto(modificador.id(), "El id del modificador es obligatorio");
+        validarTexto(modificador.nombre(), "El nombre del modificador es obligatorio");
+        if (modificador.tipo() == null) {
+            throw new ReglaDeNegocioException("El tipo del modificador es obligatorio (EXTRA o EXCLUSION)");
+        }
+        validarCostoExtra(modificador.tipo(), modificador.costoExtra());
+    }
+
+    private void exigirPlato(String platoId) {
+        if (platoId == null || platos.buscarPorId(platoId).isEmpty()) {
+            throw new ReglaDeNegocioException("No existe el plato " + platoId);
+        }
+    }
+
+    private void exigirModificador(String modificadorId) {
+        if (modificadorId == null || modificadores.buscarPorId(modificadorId).isEmpty()) {
+            throw new ReglaDeNegocioException("No existe el modificador " + modificadorId);
+        }
     }
 
     private void validarTexto(String valor, String mensaje) {

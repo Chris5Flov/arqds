@@ -25,4 +25,9 @@ public class ModificadorRepositoryMemoria implements ModificadorRepository {
     public List<Modificador> listar() {
         return new ArrayList<>(datos.values());
     }
+
+    @Override
+    public void eliminar(String id) {
+        datos.remove(id);
+    }
 }

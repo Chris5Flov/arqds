@@ -10,4 +10,6 @@ public interface ModificadorRepository {
     Optional<Modificador> buscarPorId(String id);
 
     List<Modificador> listar();
+
+    void eliminar(String id);
 }
