@@ -34,11 +34,21 @@ export function abrirModal({ titulo, contenido, acciones = [] }) {
         onclick: (evento) => { if (evento.target === fondo) cerrarModal(); }
     }, dialogo);
 
+    const principal = acciones.find((a) => a.tipo === "primario" || a.tipo === "peligro");
     dialogo.addEventListener("submit", (evento) => {
         evento.preventDefault();
-        const principal = acciones.find((a) => a.tipo === "primario" || a.tipo === "peligro");
         if (principal) {
             ejecutar(principal);
+        }
+    });
+    // Un formulario con varios campos de texto y sin botón submit no se envía solo con Enter.
+    dialogo.addEventListener("keydown", (evento) => {
+        const esCampo = evento.target.matches?.("input:not([type=checkbox]):not([type=radio]), select");
+        if (evento.key === "Enter" && esCampo && principal) {
+            evento.preventDefault();
+            if (!botones.some((b) => b.disabled)) {
+                ejecutar(principal);
+            }
         }
     });
 

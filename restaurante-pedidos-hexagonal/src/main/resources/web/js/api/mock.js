@@ -47,22 +47,28 @@ export function listarPlatos() {
 export function registrarPlato({ id, nombre, precioBase, tasaImpuesto }) {
     return responder(() => {
         exigirTexto(id, "El id del plato es obligatorio");
-        exigirTexto(nombre, "El nombre del plato es obligatorio");
-        const precio = aNumero(precioBase, "El precio es obligatorio");
-        if (precio <= 0) {
-            fallar("El precio debe ser mayor a cero");
+        const plato = validarPlato(id.trim(), { nombre, precioBase, tasaImpuesto });
+        if (platos.some((p) => p.id === plato.id)) {
+            fallar(`Ya existe un plato con id ${plato.id}`);
         }
-        exigirDosDecimales(precioBase, "El precio no puede tener más de dos decimales");
-        const tasa = aNumero(tasaImpuesto, "La tasa de impuesto es obligatoria");
-        if (tasa < 0 || tasa > 1) {
-            fallar("La tasa de impuesto debe estar entre 0 y 1 (por ejemplo 0.16)");
-        }
-        if (platos.some((p) => p.id === id.trim())) {
-            fallar(`Ya existe un plato con id ${id.trim()}`);
-        }
-        const plato = { id: id.trim(), nombre: nombre.trim(), precioBase: dinero(precio), tasaImpuesto: String(tasa) };
         platos.push(plato);
         return plato;
+    });
+}
+
+/** Las órdenes existentes no cambian: cada línea guarda su propia copia del precio y la tasa. */
+export function actualizarPlato(platoId, { nombre, precioBase, tasaImpuesto }) {
+    return responder(() => {
+        const plato = validarPlato(platoId, { nombre, precioBase, tasaImpuesto });
+        platos[indicePlato(platoId)] = plato;
+        return plato;
+    });
+}
+
+export function eliminarPlato(platoId) {
+    return responder(() => {
+        platos.splice(indicePlato(platoId), 1);
+        return null;
     });
 }
 
@@ -73,25 +79,74 @@ export function listarModificadores() {
 export function registrarModificador({ id, nombre, tipo, costoExtra }) {
     return responder(() => {
         exigirTexto(id, "El id del modificador es obligatorio");
-        exigirTexto(nombre, "El nombre del modificador es obligatorio");
-        if (!TIPOS_MODIFICADOR.includes(tipo)) {
-            fallar("El tipo del modificador es obligatorio (EXTRA o EXCLUSION)");
+        const modificador = validarModificador(id.trim(), { nombre, tipo, costoExtra });
+        if (modificadores.some((m) => m.id === modificador.id)) {
+            fallar(`Ya existe un modificador con id ${modificador.id}`);
         }
-        const costo = aNumero(costoExtra, "El costo extra es obligatorio (usa 0 si no tiene costo)");
-        if (costo < 0) {
-            fallar("El costo extra no puede ser negativo");
-        }
-        exigirDosDecimales(costoExtra, "El costo extra no puede tener más de dos decimales");
-        if (tipo === "EXCLUSION" && costo !== 0) {
-            fallar("Una exclusión no puede tener costo extra");
-        }
-        if (modificadores.some((m) => m.id === id.trim())) {
-            fallar(`Ya existe un modificador con id ${id.trim()}`);
-        }
-        const modificador = { id: id.trim(), nombre: nombre.trim(), tipo, costoExtra: dinero(costo) };
         modificadores.push(modificador);
         return modificador;
     });
+}
+
+export function actualizarModificador(modificadorId, { nombre, tipo, costoExtra }) {
+    return responder(() => {
+        const modificador = validarModificador(modificadorId, { nombre, tipo, costoExtra });
+        modificadores[indiceModificador(modificadorId)] = modificador;
+        return modificador;
+    });
+}
+
+export function eliminarModificador(modificadorId) {
+    return responder(() => {
+        modificadores.splice(indiceModificador(modificadorId), 1);
+        return null;
+    });
+}
+
+function validarPlato(id, { nombre, precioBase, tasaImpuesto }) {
+    exigirTexto(nombre, "El nombre del plato es obligatorio");
+    const precio = aNumero(precioBase, "El precio es obligatorio");
+    if (precio <= 0) {
+        fallar("El precio debe ser mayor a cero");
+    }
+    exigirDosDecimales(precioBase, "El precio no puede tener más de dos decimales");
+    const tasa = aNumero(tasaImpuesto, "La tasa de impuesto es obligatoria");
+    if (tasa < 0 || tasa > 1) {
+        fallar("La tasa de impuesto debe estar entre 0 y 1 (por ejemplo 0.16)");
+    }
+    return { id, nombre: nombre.trim(), precioBase: dinero(precio), tasaImpuesto: String(tasa) };
+}
+
+function validarModificador(id, { nombre, tipo, costoExtra }) {
+    exigirTexto(nombre, "El nombre del modificador es obligatorio");
+    if (!TIPOS_MODIFICADOR.includes(tipo)) {
+        fallar("El tipo del modificador es obligatorio (EXTRA o EXCLUSION)");
+    }
+    const costo = aNumero(costoExtra, "El costo extra es obligatorio (usa 0 si no tiene costo)");
+    if (costo < 0) {
+        fallar("El costo extra no puede ser negativo");
+    }
+    if (tipo === "EXCLUSION" && costo !== 0) {
+        fallar("Una exclusión no puede tener costo extra");
+    }
+    exigirDosDecimales(costoExtra, "El costo extra no puede tener más de dos decimales");
+    return { id, nombre: nombre.trim(), tipo, costoExtra: dinero(costo) };
+}
+
+function indicePlato(platoId) {
+    const indice = platos.findIndex((p) => p.id === platoId);
+    if (indice < 0) {
+        fallar(`No existe el plato ${platoId}`);
+    }
+    return indice;
+}
+
+function indiceModificador(modificadorId) {
+    const indice = modificadores.findIndex((m) => m.id === modificadorId);
+    if (indice < 0) {
+        fallar(`No existe el modificador ${modificadorId}`);
+    }
+    return indice;
 }
 
 // ---------------------------------------------------------------- Órdenes

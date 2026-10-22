@@ -25,4 +25,9 @@ public class PlatoRepositoryMemoria implements PlatoRepository {
     public List<Plato> listar() {
         return new ArrayList<>(datos.values());
     }
+
+    @Override
+    public void eliminar(String id) {
+        datos.remove(id);
+    }
 }

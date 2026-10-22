@@ -10,4 +10,6 @@ public interface PlatoRepository {
     Optional<Plato> buscarPorId(String id);
 
     List<Plato> listar();
+
+    void eliminar(String id);
 }

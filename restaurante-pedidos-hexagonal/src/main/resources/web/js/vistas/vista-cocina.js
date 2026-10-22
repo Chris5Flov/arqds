@@ -1,6 +1,7 @@
-// Vista Cocina (Cocinero, RF3): pedidos pendientes y avance PENDIENTE -> EN_COCCION -> LISTO.
+// Vista Cocina (Cocinero, RF3): flujo de los platillos En fila -> En cocción -> Listo para entrega.
+// Los platillos listos para entrega se quedan en el tablero hasta que la caja cobra su orden.
 
-import { listarPendientesCocina, listarModificadores, iniciarCoccion, marcarLista } from "../api/api.js";
+import { listarPendientesCocina, listarOrdenes, listarModificadores, iniciarCoccion, marcarLista } from "../api/api.js";
 import { mostrarExito, mostrarError } from "../componentes/notificaciones.js";
 import { crear, limpiar, mientrasEspera } from "../util/dom.js";
 import { horaActual } from "../util/formato.js";
@@ -51,9 +52,10 @@ export function montar(contenedor) {
         estado.cargando = true;
         botonActualizar.disabled = true;
         try {
-            const lineas = await listarPendientesCocina();
+            // /cocina/pendientes trae En fila y En cocción; los listos para entrega salen de las órdenes abiertas.
+            const [lineas, ordenesAbiertas] = await Promise.all([listarPendientesCocina(), listarOrdenes("ABIERTA")]);
             if (!estado.activa) return;
-            pintar(lineas);
+            pintar([...lineas, ...lineasListas(ordenesAbiertas)]);
             textoActualizado.textContent = `Actualizado ${horaActual()}`;
         } catch (error) {
             if (!estado.activa) return;
@@ -71,11 +73,10 @@ export function montar(contenedor) {
             tablero.appendChild(crear("p", { class: "texto-vacio tarjeta" }, "No hay pedidos pendientes"));
             return;
         }
-        const pendientes = lineas.filter((l) => l.estado === "PENDIENTE");
-        const enCoccion = lineas.filter((l) => l.estado === "EN_COCCION");
         tablero.appendChild(crear("div", { class: "tablero" },
-            columna("Pendientes", pendientes, "pendientes"),
-            columna("En cocción", enCoccion, "coccion")));
+            columna("En fila", lineas.filter((l) => l.estado === "PENDIENTE"), "pendientes"),
+            columna("En cocción", lineas.filter((l) => l.estado === "EN_COCCION"), "coccion"),
+            columna("Listo para entrega", lineas.filter((l) => l.estado === "LISTO"), "listo")));
     }
 
     function columna(titulo, lineas, tipo) {
@@ -88,21 +89,28 @@ export function montar(contenedor) {
     }
 
     function tarjeta(linea) {
-        const enCoccion = linea.estado === "EN_COCCION";
-        const boton = crear("button", {
-            type: "button",
-            class: `boton ${enCoccion ? "boton--primario" : "boton--secundario"}`,
-            onclick: () => avanzar(linea, boton)
-        }, enCoccion ? "Marcar lista" : "Iniciar cocción");
-
-        return crear("article", { class: `tarjeta-cocina${enCoccion ? " tarjeta-cocina--coccion" : ""}` },
+        const clases = { EN_COCCION: " tarjeta-cocina--coccion", LISTO: " tarjeta-cocina--listo" };
+        return crear("article", { class: `tarjeta-cocina${clases[linea.estado] ?? ""}` },
             crear("div", { class: "tarjeta-cocina__referencia" }, linea.referenciaOrden),
             crear("div", { class: "tarjeta-cocina__plato" }, `${linea.plato} × ${linea.cantidad}`),
             linea.modificadores?.length
                 ? crear("ul", { class: "tarjeta-cocina__modificadores" }, linea.modificadores.map((nombre) =>
                     crear("li", { class: estado.exclusiones.has(nombre) ? "modificador--exclusion" : null }, nombre)))
                 : null,
-            boton);
+            accion(linea));
+    }
+
+    function accion(linea) {
+        if (linea.estado === "LISTO") {
+            return crear("p", { class: "texto-secundario" }, "Esperando cobro en caja");
+        }
+        const enCoccion = linea.estado === "EN_COCCION";
+        const boton = crear("button", {
+            type: "button",
+            class: `boton ${enCoccion ? "boton--primario" : "boton--secundario"}`,
+            onclick: () => avanzar(linea, boton)
+        }, enCoccion ? "Listo para entrega" : "Iniciar cocción");
+        return boton;
     }
 
     function avanzar(linea, boton) {
@@ -111,7 +119,7 @@ export function montar(contenedor) {
             try {
                 if (enCoccion) {
                     await marcarLista(linea.ordenId, linea.lineaId);
-                    mostrarExito(`${linea.plato} (${linea.referenciaOrden}) listo`);
+                    mostrarExito(`${linea.plato} (${linea.referenciaOrden}) listo para entrega`);
                 } else {
                     await iniciarCoccion(linea.ordenId, linea.lineaId);
                     mostrarExito(`Cocción iniciada: ${linea.plato} (${linea.referenciaOrden})`);
@@ -129,4 +137,19 @@ export function montar(contenedor) {
         }
         await refrescar(false);
     }
+}
+
+/** Convierte las líneas LISTO de las órdenes abiertas al mismo formato que LineaCocinaDto. */
+function lineasListas(ordenes) {
+    return ordenes.flatMap((orden) => orden.lineas
+        .filter((linea) => linea.estadoCocina === "LISTO")
+        .map((linea) => ({
+            ordenId: orden.id,
+            lineaId: linea.id,
+            referenciaOrden: orden.referencia,
+            plato: linea.platoNombre,
+            cantidad: linea.cantidad,
+            modificadores: linea.modificadores.map((m) => m.nombre),
+            estado: "LISTO"
+        })));
 }

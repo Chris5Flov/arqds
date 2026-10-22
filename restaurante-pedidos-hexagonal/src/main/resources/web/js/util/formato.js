@@ -46,7 +46,7 @@ export function horaActual() {
 }
 
 export const ETIQUETAS = {
-    PENDIENTE: "Pendiente", EN_COCCION: "En cocción", LISTO: "Listo", CANCELADA: "Cancelada",
+    PENDIENTE: "Pendiente", EN_COCCION: "En cocción", LISTO: "Listo para entrega", CANCELADA: "Cancelada",
     ABIERTA: "Abierta", CERRADA: "Cerrada", APROBADO: "Aprobado", RECHAZADO: "Rechazado",
     SALA: "Sala", PARA_LLEVAR: "Para llevar", DELIVERY: "Delivery",
     EFECTIVO: "Efectivo", TARJETA: "Tarjeta", PASARELA_DIGITAL: "Pasarela digital",
