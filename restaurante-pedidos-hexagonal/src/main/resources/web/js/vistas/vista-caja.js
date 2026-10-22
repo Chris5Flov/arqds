@@ -1,4 +1,5 @@
 // Vista Caja (Cajero, RF4 y RF5): totales con descuento y propina, y cobro.
+// Solo aparecen las órdenes con todos sus platillos listos para entrega.
 // Los totales siempre los calcula el backend; aquí solo se sugiere la propina rápida.
 
 import { listarOrdenes, obtenerOrden, calcularTotales, cobrar } from "../api/api.js";
@@ -8,6 +9,7 @@ import { crear, limpiar, campo, mientrasEspera, mostrarEnPantallaAngosta } from 
 import { formatoDinero, formatoFecha, normalizarMonto, etiqueta } from "../util/formato.js";
 
 const ESPERA_ESCRITURA_MS = 400;
+const INTERVALO_LISTA_MS = 5000;
 const PROPINAS_RAPIDAS = [10, 15, 20];
 const METODOS = ["EFECTIVO", "TARJETA", "PASARELA_DIGITAL"];
 
@@ -20,17 +22,22 @@ export function montar(contenedor) {
         calculando: false,
         consultaTotales: 0,
         consultaDetalle: 0,
-        temporizador: null
+        temporizador: null,
+        cargandoLista: false,
+        recargaPendiente: false,
+        firmaLista: null
     };
 
-    const lista = crear("ul", { class: "lista-ordenes", "aria-label": "Órdenes abiertas" });
+    const lista = crear("ul", { class: "lista-ordenes", "aria-label": "Órdenes listas para entrega" });
     const detalle = crear("section", { class: "tarjeta" });
 
     contenedor.appendChild(crear("section", { class: "vista" },
         crear("div", { class: "vista__encabezado" }, crear("h2", { class: "vista__titulo" }, "Caja")),
         crear("div", { class: "columnas columnas--lista-detalle" },
             crear("section", { class: "tarjeta" },
-                crear("h3", { class: "tarjeta__subtitulo" }, "Órdenes abiertas"),
+                crear("div", { class: "pila" },
+                    crear("h3", { class: "tarjeta__subtitulo" }, "Listas para entrega"),
+                    crear("span", { class: "texto-secundario" }, "Órdenes con todos sus platillos listos en cocina")),
                 lista),
             detalle)));
 
@@ -63,26 +70,50 @@ export function montar(contenedor) {
 
     pintarSinSeleccion();
     cargarLista();
+    // La lista se actualiza sola para que aparezcan las órdenes que la cocina va terminando.
+    const intervalo = setInterval(() => cargarLista(true), INTERVALO_LISTA_MS);
 
     return () => {
         estado.activa = false;
         clearTimeout(estado.temporizador);
+        clearInterval(intervalo);
     };
 
     // ------------------------------------------------------------ datos
 
-    async function cargarLista() {
+    /** automatica: refresco periódico; si falla no se avisa con notificación para no repetir el aviso cada 5 s. */
+    async function cargarLista(automatica = false) {
+        if (estado.cargandoLista) {
+            // Una recarga pedida por el usuario no se pierde: se repite al terminar la que está en curso.
+            estado.recargaPendiente ||= !automatica;
+            return;
+        }
+        estado.cargandoLista = true;
         if (!lista.firstChild) {
             lista.appendChild(crear("li", { class: "cargando" }, "Cargando órdenes…"));
         }
         try {
-            const ordenes = await listarOrdenes("ABIERTA");
+            const ordenes = (await listarOrdenes("ABIERTA")).filter(estaListaParaEntrega);
             if (!estado.activa) return;
-            pintarLista(ordenes);
+            // Solo se vuelve a pintar si algo cambió, para no perder el foco del teclado en cada refresco.
+            const firma = JSON.stringify(ordenes.map((o) => [o.id, o.totales?.total]));
+            if (firma !== estado.firmaLista) {
+                estado.firmaLista = firma;
+                pintarLista(ordenes);
+            }
         } catch (error) {
             if (!estado.activa) return;
-            limpiar(lista).appendChild(crear("li", { class: "texto-secundario" }, "No se pudieron cargar las órdenes."));
-            mostrarError(error);
+            if (!automatica) {
+                estado.firmaLista = null;
+                limpiar(lista).appendChild(crear("li", { class: "texto-secundario" }, "No se pudieron cargar las órdenes."));
+                mostrarError(error);
+            }
+        } finally {
+            estado.cargandoLista = false;
+            if (estado.recargaPendiente && estado.activa) {
+                estado.recargaPendiente = false;
+                cargarLista();
+            }
         }
     }
 
@@ -167,6 +198,16 @@ export function montar(contenedor) {
         const metodo = metodos.querySelector("input:checked")?.value;
         mientrasEspera(botonCobrar, async () => {
             try {
+                // Puede haber cambiado desde otro dispositivo (p. ej. el mesero agregó un platillo).
+                const vigente = await obtenerOrden(orden.id);
+                if (!estaListaParaEntrega(vigente)) {
+                    mostrarError("La orden ya no está lista para entrega: tiene platillos pendientes en cocina");
+                    estado.ordenSeleccionadaId = null;
+                    estado.orden = null;
+                    pintarSinSeleccion();
+                    cargarLista();
+                    return;
+                }
                 const pago = await cobrar(orden.id, { metodo, ...montosCapturados() });
                 pintarResultado(pago);
                 if (pago.estado === "APROBADO") {
@@ -194,7 +235,8 @@ export function montar(contenedor) {
     function pintarLista(ordenes) {
         limpiar(lista);
         if (ordenes.length === 0) {
-            lista.appendChild(crear("li", { class: "texto-secundario" }, "No hay órdenes abiertas."));
+            lista.appendChild(crear("li", { class: "texto-secundario" },
+                "No hay órdenes listas para entrega. Aparecen aquí cuando la cocina marca todos sus platillos como listos."));
             return;
         }
         for (const orden of ordenes) {
@@ -217,7 +259,7 @@ export function montar(contenedor) {
     }
 
     function pintarSinSeleccion() {
-        limpiar(detalle).appendChild(crear("p", { class: "texto-vacio" }, "Selecciona una orden abierta para cobrarla"));
+        limpiar(detalle).appendChild(crear("p", { class: "texto-vacio" }, "Selecciona una orden lista para entrega para cobrarla"));
     }
 
     function pintarDetalle(orden) {
@@ -282,6 +324,12 @@ export function montar(contenedor) {
                 crear("span", { class: "texto-secundario" }, `${formatoFecha(pago.fecha)} · ${pago.referencia ?? ""}`),
                 crear("span", { class: "lista-pagos__monto" }, formatoDinero(pago.monto)))))));
     }
+}
+
+/** Una orden pasa a caja cuando tiene platillos y todos los no cancelados están listos para entrega. */
+function estaListaParaEntrega(orden) {
+    const activas = orden.lineas.filter((l) => l.estadoCocina !== "CANCELADA");
+    return activas.length > 0 && activas.every((l) => l.estadoCocina === "LISTO");
 }
 
 function resumenLineas(orden) {

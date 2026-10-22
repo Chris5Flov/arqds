@@ -664,7 +664,7 @@ select:disabled {
 
 .tablero {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--espacio);
     align-items: start;
 }
@@ -710,6 +710,14 @@ select:disabled {
 
 .tarjeta-cocina--coccion {
     border-left: 5px solid var(--color-coccion);
+}
+
+.columna-tablero--listo {
+    background: var(--color-exito-suave);
+}
+
+.tarjeta-cocina--listo {
+    border-left: 5px solid var(--color-exito);
 }
 
 .tarjeta-cocina__referencia {
