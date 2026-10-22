@@ -1,7 +1,11 @@
-// Vista Menú (Administrador, RF1): registrar y consultar platos y modificadores.
+// Vista Menú (Administrador, RF1): registrar, consultar, editar y eliminar platos y modificadores.
 
-import { listarPlatos, registrarPlato, listarModificadores, registrarModificador } from "../api/api.js";
+import {
+    listarPlatos, registrarPlato, actualizarPlato, eliminarPlato,
+    listarModificadores, registrarModificador, actualizarModificador, eliminarModificador
+} from "../api/api.js";
 import { mostrarExito, mostrarError } from "../componentes/notificaciones.js";
+import { abrirModal, cerrarModal, confirmar } from "../componentes/modal.js";
 import { insigniaEstado } from "../componentes/insignia.js";
 import { crear, limpiar, campo, mientrasEspera } from "../util/dom.js";
 import { formatoDinero, formatoPorcentaje, normalizarMonto } from "../util/formato.js";
@@ -50,12 +54,12 @@ export function montar(contenedor) {
         crear("div", { class: "columnas" },
             crear("section", { class: "tarjeta" },
                 crear("h2", { class: "tarjeta__titulo" }, "Platos"),
-                tabla(["ID", "Nombre", "Precio", "Impuesto"], [2, 3], cuerpoPlatos),
+                tabla(["ID", "Nombre", "Precio", "Impuesto", "Acciones"], [2, 3], cuerpoPlatos),
                 crear("hr", { class: "separador" }),
                 formularioPlato),
             crear("section", { class: "tarjeta" },
                 crear("h2", { class: "tarjeta__titulo" }, "Modificadores"),
-                tabla(["ID", "Nombre", "Tipo", "Costo extra"], [3], cuerpoModificadores),
+                tabla(["ID", "Nombre", "Tipo", "Costo extra", "Acciones"], [3], cuerpoModificadores),
                 crear("hr", { class: "separador" }),
                 formularioModificador))));
 
@@ -67,13 +71,15 @@ export function montar(contenedor) {
     // ------------------------------------------------------------ acciones
 
     async function cargarPlatos() {
-        filaMensaje(cuerpoPlatos, 4, "Cargando platos…", "cargando");
+        if (!cuerpoPlatos.firstChild) {
+            filaMensaje(cuerpoPlatos, 5, "Cargando platos…", "cargando");
+        }
         try {
             const platos = await listarPlatos();
             if (!activa) return;
             limpiar(cuerpoPlatos);
             if (platos.length === 0) {
-                filaMensaje(cuerpoPlatos, 4, "Aún no hay platos registrados.");
+                filaMensaje(cuerpoPlatos, 5, "Aún no hay platos registrados.");
                 return;
             }
             for (const plato of platos) {
@@ -81,23 +87,26 @@ export function montar(contenedor) {
                     crear("td", {}, plato.id),
                     crear("td", {}, plato.nombre),
                     crear("td", { class: "numero" }, formatoDinero(plato.precioBase)),
-                    crear("td", { class: "numero" }, formatoPorcentaje(plato.tasaImpuesto))));
+                    crear("td", { class: "numero" }, formatoPorcentaje(plato.tasaImpuesto)),
+                    crear("td", { class: "acciones" }, botonesFila(() => editarPlato(plato), () => pedirEliminarPlato(plato)))));
             }
         } catch (error) {
             if (!activa) return;
-            filaMensaje(cuerpoPlatos, 4, "No se pudieron cargar los platos.");
+            filaMensaje(cuerpoPlatos, 5, "No se pudieron cargar los platos.");
             mostrarError(error);
         }
     }
 
     async function cargarModificadores() {
-        filaMensaje(cuerpoModificadores, 4, "Cargando modificadores…", "cargando");
+        if (!cuerpoModificadores.firstChild) {
+            filaMensaje(cuerpoModificadores, 5, "Cargando modificadores…", "cargando");
+        }
         try {
             const modificadores = await listarModificadores();
             if (!activa) return;
             limpiar(cuerpoModificadores);
             if (modificadores.length === 0) {
-                filaMensaje(cuerpoModificadores, 4, "Aún no hay modificadores registrados.");
+                filaMensaje(cuerpoModificadores, 5, "Aún no hay modificadores registrados.");
                 return;
             }
             for (const modificador of modificadores) {
@@ -105,13 +114,130 @@ export function montar(contenedor) {
                     crear("td", {}, modificador.id),
                     crear("td", {}, modificador.nombre),
                     crear("td", {}, insigniaEstado(modificador.tipo)),
-                    crear("td", { class: "numero" }, formatoDinero(modificador.costoExtra))));
+                    crear("td", { class: "numero" }, formatoDinero(modificador.costoExtra)),
+                    crear("td", { class: "acciones" },
+                        botonesFila(() => editarModificador(modificador), () => pedirEliminarModificador(modificador)))));
             }
         } catch (error) {
             if (!activa) return;
-            filaMensaje(cuerpoModificadores, 4, "No se pudieron cargar los modificadores.");
+            filaMensaje(cuerpoModificadores, 5, "No se pudieron cargar los modificadores.");
             mostrarError(error);
         }
+    }
+
+    // ------------------------------------------------------------ editar y eliminar
+
+    function editarPlato(plato) {
+        const nombre = crear("input", { type: "text", id: "editar-plato-nombre", autocomplete: "off", value: plato.nombre });
+        const precio = crear("input", { type: "text", id: "editar-plato-precio", inputmode: "decimal", autocomplete: "off", value: plato.precioBase });
+        const tasa = crear("input", { type: "text", id: "editar-plato-tasa", inputmode: "decimal", autocomplete: "off", value: plato.tasaImpuesto });
+
+        abrirModal({
+            titulo: `Editar plato ${plato.id}`,
+            contenido: crear("form", { class: "formulario" },
+                campo("Nombre", nombre),
+                crear("div", { class: "formulario__campos" },
+                    campo("Precio base", precio),
+                    campo("Tasa de impuesto", tasa, "fracción: 0.16 = 16 %")),
+                crear("p", { class: "texto-secundario" }, "Las órdenes que ya tienen este plato conservan su precio.")),
+            acciones: [
+                { texto: "Volver", tipo: "secundario" },
+                {
+                    texto: "Guardar cambios",
+                    tipo: "primario",
+                    alHacerClic: async () => {
+                        try {
+                            const actualizado = await actualizarPlato(plato.id, {
+                                nombre: nombre.value.trim(),
+                                precioBase: normalizarMonto(precio.value),
+                                tasaImpuesto: normalizarMonto(tasa.value)
+                            });
+                            cerrarModal();
+                            mostrarExito(`Plato "${actualizado.nombre}" actualizado`);
+                            await cargarPlatos();
+                        } catch (error) {
+                            mostrarError(error);
+                        }
+                    }
+                }
+            ]
+        });
+    }
+
+    function pedirEliminarPlato(plato) {
+        confirmar({
+            titulo: "Eliminar plato",
+            mensaje: `¿Eliminar "${plato.nombre}" del menú? Ya no se podrá agregar a órdenes nuevas; las órdenes que ya lo tienen no cambian.`,
+            textoConfirmar: "Eliminar",
+            alConfirmar: async () => {
+                try {
+                    await eliminarPlato(plato.id);
+                    mostrarExito(`Plato "${plato.nombre}" eliminado`);
+                    cargarPlatos();
+                } catch (error) {
+                    mostrarError(error);
+                    return false;
+                }
+            }
+        });
+    }
+
+    function editarModificador(modificador) {
+        const nombre = crear("input", { type: "text", id: "editar-mod-nombre", autocomplete: "off", value: modificador.nombre });
+        const costo = crear("input", { type: "text", id: "editar-mod-costo", inputmode: "decimal", autocomplete: "off", value: modificador.costoExtra });
+        const tipo = crear("select", { id: "editar-mod-tipo", onchange: () => fijarCostoSegunTipo(tipo, costo) },
+            crear("option", { value: "EXTRA", selected: modificador.tipo === "EXTRA" }, "Extra"),
+            crear("option", { value: "EXCLUSION", selected: modificador.tipo === "EXCLUSION" }, "Exclusión"));
+        fijarCostoSegunTipo(tipo, costo);
+
+        abrirModal({
+            titulo: `Editar modificador ${modificador.id}`,
+            contenido: crear("form", { class: "formulario" },
+                campo("Nombre", nombre),
+                crear("div", { class: "formulario__campos" },
+                    campo("Tipo", tipo),
+                    campo("Costo extra", costo, "Una exclusión no tiene costo")),
+                crear("p", { class: "texto-secundario" }, "Las órdenes que ya lo tienen conservan su costo.")),
+            acciones: [
+                { texto: "Volver", tipo: "secundario" },
+                {
+                    texto: "Guardar cambios",
+                    tipo: "primario",
+                    alHacerClic: async () => {
+                        try {
+                            const actualizado = await actualizarModificador(modificador.id, {
+                                nombre: nombre.value.trim(),
+                                tipo: tipo.value,
+                                costoExtra: tipo.value === "EXCLUSION" ? "0" : normalizarMonto(costo.value)
+                            });
+                            cerrarModal();
+                            mostrarExito(`Modificador "${actualizado.nombre}" actualizado`);
+                            await cargarModificadores();
+                        } catch (error) {
+                            mostrarError(error);
+                        }
+                    }
+                }
+            ]
+        });
+    }
+
+    function pedirEliminarModificador(modificador) {
+        confirmar({
+            titulo: "Eliminar modificador",
+            mensaje: `¿Eliminar "${modificador.nombre}" del menú? Ya no se podrá elegir en órdenes nuevas; las órdenes que ya lo tienen no cambian.`,
+            textoConfirmar: "Eliminar",
+            alConfirmar: async () => {
+                try {
+                    await eliminarModificador(modificador.id);
+                    mostrarExito(`Modificador "${modificador.nombre}" eliminado`);
+                    cargarModificadores();
+                } catch (error) {
+                    mostrarError(error);
+                    return false;
+                }
+            }
+        });
     }
 
     function guardarPlato(evento) {
@@ -158,16 +284,26 @@ export function montar(contenedor) {
         });
     }
 
-    /** Si el tipo es EXCLUSION, el costo se deshabilita y se fija en "0". */
     function actualizarCosto() {
-        const esExclusion = tipoModificador.value === "EXCLUSION";
-        if (esExclusion) {
-            costoModificador.value = "0";
-        } else if (costoModificador.disabled) {
-            costoModificador.value = "";
-        }
-        costoModificador.disabled = esExclusion;
+        fijarCostoSegunTipo(tipoModificador, costoModificador);
     }
+}
+
+/** Si el tipo es EXCLUSION, el costo se deshabilita y se fija en "0". */
+function fijarCostoSegunTipo(tipo, costo) {
+    const esExclusion = tipo.value === "EXCLUSION";
+    if (esExclusion) {
+        costo.value = "0";
+    } else if (costo.disabled) {
+        costo.value = "";
+    }
+    costo.disabled = esExclusion;
+}
+
+function botonesFila(alEditar, alEliminar) {
+    return crear("div", { class: "fila" },
+        crear("button", { type: "button", class: "boton boton--secundario boton--pequeno", onclick: alEditar }, "Editar"),
+        crear("button", { type: "button", class: "boton boton--peligro boton--pequeno", onclick: alEliminar }, "Eliminar"));
 }
 
 function tabla(encabezados, columnasNumericas, cuerpo) {

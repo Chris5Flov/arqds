@@ -19,6 +19,17 @@ export function registrarPlato({ id: platoId, nombre, precioBase, tasaImpuesto }
     return usandoSimulador ? simulador.registrarPlato(cuerpo) : peticion("POST", "/platos", cuerpo);
 }
 
+export function actualizarPlato(platoId, { nombre, precioBase, tasaImpuesto }) {
+    const cuerpo = { nombre, precioBase, tasaImpuesto };
+    return usandoSimulador
+        ? simulador.actualizarPlato(platoId, cuerpo)
+        : peticion("PUT", `/platos/${id(platoId)}`, cuerpo);
+}
+
+export function eliminarPlato(platoId) {
+    return usandoSimulador ? simulador.eliminarPlato(platoId) : peticion("DELETE", `/platos/${id(platoId)}`);
+}
+
 export function listarModificadores() {
     return usandoSimulador ? simulador.listarModificadores() : peticion("GET", "/modificadores");
 }
@@ -26,6 +37,19 @@ export function listarModificadores() {
 export function registrarModificador({ id: modificadorId, nombre, tipo, costoExtra }) {
     const cuerpo = { id: modificadorId, nombre, tipo, costoExtra };
     return usandoSimulador ? simulador.registrarModificador(cuerpo) : peticion("POST", "/modificadores", cuerpo);
+}
+
+export function actualizarModificador(modificadorId, { nombre, tipo, costoExtra }) {
+    const cuerpo = { nombre, tipo, costoExtra };
+    return usandoSimulador
+        ? simulador.actualizarModificador(modificadorId, cuerpo)
+        : peticion("PUT", `/modificadores/${id(modificadorId)}`, cuerpo);
+}
+
+export function eliminarModificador(modificadorId) {
+    return usandoSimulador
+        ? simulador.eliminarModificador(modificadorId)
+        : peticion("DELETE", `/modificadores/${id(modificadorId)}`);
 }
 
 // ---------------------------------------------------------------- Órdenes
